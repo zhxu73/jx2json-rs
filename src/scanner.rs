@@ -178,10 +178,7 @@ fn token_match(input: &str) -> MatchResult {
                 MatchResult::No
             }
         }
-        '0'..='9' => match input.parse::<i32>().ok() {
-            Some(val) => return MatchResult::More(Some(Token::INTCONST(val))),
-            None => return MatchResult::No,
-        },
+        '0'..='9' => match_numeric(input),
         // ID
         'a'..='z' => match_id(input),
         'A'..='Z' => match_id(input),
@@ -191,6 +188,31 @@ fn token_match(input: &str) -> MatchResult {
         '"' => match_strconst(input, '"'),
         _ => MatchResult::No,
     }
+}
+
+fn match_numeric(input: &str) -> MatchResult {
+    match input.parse::<i32>().ok() {
+        Some(val) => return MatchResult::More(Some(Token::INTCONST(val))),
+        None => (),
+    };
+    // not Matched ending with dot, e.g. "123."
+    match input.chars().last() {
+        Some(c) => {
+            if c == '.' {
+            match &input[..input.len()-1].parse::<i32>().ok() {
+                Some(_) => return MatchResult::More(None),
+                None => return MatchResult::No,
+            };
+        }
+        },
+        None => (),
+    };
+    match input.parse::<f64>().ok() {
+        Some(val) => return MatchResult::More(Some(Token::DOUBLECONST(val))),
+        None => (),
+    }
+
+    MatchResult::No
 }
 
 // match token that only consist of 1 character
@@ -430,6 +452,66 @@ mod tests {
             Token::BOOLCONST(false) => return,
             _ => panic!("Should match BOOLCONST"),
         }
+    }
+
+    #[test]
+    fn match_double_zero() {
+        let input = String::from("0.0");
+        let token = match token_match(&input) {
+            MatchResult::More(opt) => match opt {
+                Some(token) => token,
+                None => panic!("Should matched More(token)"),
+            },
+            _ => panic!("Should matched More"),
+        };
+        match token {
+            Token::DOUBLECONST(f) => assert_eq!(0.0, f),
+            _ => panic!("Should match DOUBLECONST"),
+        }
+    }
+
+    #[test]
+    fn match_double1() {
+        let input = String::from("1.0");
+        let token = match token_match(&input) {
+            MatchResult::More(opt) => match opt {
+                Some(token) => token,
+                None => panic!("Should matched More(token)"),
+            },
+            _ => panic!("Should matched More"),
+        };
+        match token {
+            Token::DOUBLECONST(f) => assert_eq!(1.0, f),
+            _ => panic!("Should match DOUBLECONST"),
+        }
+    }
+
+    #[test]
+    fn match_double2() {
+        let input = String::from("2.14523124695");
+        let token = match token_match(&input) {
+            MatchResult::More(opt) => match opt {
+                Some(token) => token,
+                None => panic!("Should matched More(token)"),
+            },
+            _ => panic!("Should matched More"),
+        };
+        match token {
+            Token::DOUBLECONST(f) => assert_eq!(2.14523124695, f),
+            _ => panic!("Should match DOUBLECONST"),
+        }
+    }
+
+    #[test]
+    fn match_double_end_with_dot() {
+        let input = String::from("2.");
+        match token_match(&input) {
+            MatchResult::More(opt) => match opt {
+                None => return,
+                Some(_) => panic!("Should matched More(None)"),
+            },
+            _ => panic!("Should matched More"),
+        };
     }
 
     #[test]

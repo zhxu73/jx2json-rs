@@ -91,16 +91,17 @@ fn move_forward(src: &mut String, matching: &mut String) -> bool {
                 return true;
             }
         }
-        None => (),
+        None => {
+            // skip whitespaces char in the begining of the matching string
+            while c.is_whitespace() {
+                c = match src.pop() {
+                    Some(c) => c,
+                    None => return false,
+                };
+            }
+        }
     };
 
-    // skip whitespaces char if not in String Const
-    while c.is_whitespace() {
-        c = match src.pop() {
-            Some(c) => c,
-            None => return false,
-        };
-    }
     matching.push(c);
     true
 }

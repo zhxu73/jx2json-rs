@@ -4,14 +4,11 @@ rust:
   - beta
   - nightly
 cache: cargo
-jobs:
+matrix:
   allow_failures:
     - rust: nightly
   fast_finish: true
-before_script:
-  - rustup component add rustfmt
 script:
-  - cargo fmt --all --verbose -- --check
+  - if [ $TRAVIS_RUST_VERSION == "stable" ]; then cargo fmt --all --verbose -- --check; fi
   - cargo build --verbose --workspace
   - cargo test --verbose --workspace
-

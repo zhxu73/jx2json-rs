@@ -180,7 +180,7 @@ fn token_match(input: &str) -> MatchResult {
         }
         '0'..='9' => match_numeric(input),
         // ID
-        'a'..='z' => match_id(input),
+        'a'..='z' => match_alphabetic(input),
         'A'..='Z' => match_id(input),
 
         // String literal
@@ -199,12 +199,12 @@ fn match_numeric(input: &str) -> MatchResult {
     match input.chars().last() {
         Some(c) => {
             if c == '.' {
-            match &input[..input.len()-1].parse::<i32>().ok() {
-                Some(_) => return MatchResult::More(None),
-                None => return MatchResult::No,
-            };
+                match &input[..input.len() - 1].parse::<i32>().ok() {
+                    Some(_) => return MatchResult::More(None),
+                    None => return MatchResult::No,
+                };
+            }
         }
-        },
         None => (),
     };
     match input.parse::<f64>().ok() {
@@ -221,6 +221,40 @@ fn match_1_char_token(input: &str, token: Token) -> MatchResult {
         return MatchResult::No;
     }
     MatchResult::Matched(token)
+}
+
+// match anything start with a alphabet
+fn match_alphabetic(input: &str) -> MatchResult {
+    let c = match input.chars().nth(0) {
+        Some(c) => c,
+        None => return MatchResult::No,
+    };
+    match c {
+        'f' => {
+            if input == "false" {
+                return MatchResult::More(Some(Token::BOOLCONST(false)));
+            } else if input == "for" {
+                return MatchResult::More(Some(Token::FOR));
+            }
+        }
+        't' => {
+            if input == "true" {
+                return MatchResult::More(Some(Token::BOOLCONST(true)));
+            }
+        }
+        'n' => {
+            if input == "null" {
+                return MatchResult::More(Some(Token::NULL));
+            }
+        }
+        'i' => {
+            if input == "in" {
+                return MatchResult::More(Some(Token::IN));
+            }
+        }
+        _ => (),
+    };
+    match_id(input)
 }
 
 // assume the 1st char is a letter
@@ -512,6 +546,38 @@ mod tests {
             },
             _ => panic!("Should matched More"),
         };
+    }
+
+    #[test]
+    fn match_null() {
+        let input = String::from("null");
+        let token = match token_match(&input) {
+            MatchResult::More(opt) => match opt {
+                Some(token) => token,
+                _ => panic!("Should matched More(token)"),
+            },
+            _ => panic!("Should matched More"),
+        };
+        match token {
+            Token::NULL => return,
+            _ => panic!("Should matched NULL"),
+        }
+    }
+
+    #[test]
+    fn match_null_cap() {
+        let input = String::from("NULL");
+        let token = match token_match(&input) {
+            MatchResult::More(opt) => match opt {
+                Some(token) => token,
+                _ => panic!("Should matched More(token)"),
+            },
+            _ => panic!("Should matched More"),
+        };
+        match token {
+            Token::ID(name) => assert_eq!("NULL", name),
+            _ => panic!("Should matched ID"),
+        }
     }
 
     #[test]

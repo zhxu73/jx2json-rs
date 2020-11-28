@@ -106,7 +106,7 @@ impl fmt::Display for Token {
             Token::LE => write!(f, "LE"),
             Token::GT => write!(f, "GT"),
             Token::GE => write!(f, "GE"),
-            Token::ID(name) => write!(f, "{}", name),
+            Token::ID(name) => write!(f, "ID({})", name),
         }
     }
 }

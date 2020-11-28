@@ -1,5 +1,5 @@
 [package]
-name = "jx2json-rs"
+name = "jx2json"
 version = "0.1.0"
 authors = ["John Xu"]
 edition = "2018"

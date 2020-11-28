@@ -599,33 +599,4 @@ mod tests {
             _ => panic!("Should matched ID"),
         }
     }
-
-    #[test]
-    fn scan_tokens1() {
-        let input = String::from("{\"rules\": []}");
-        let result = scan_token(input);
-        let expected = vec![
-            Token::LBRAC,
-            Token::STRCONST(String::from("rules")),
-            Token::COLON,
-            Token::LSQBRAC,
-            Token::RSQBRAC,
-            Token::RBRAC,
-        ];
-
-        match result {
-            Ok(tokens) => {
-                let matching = tokens
-                    .iter()
-                    .zip(&expected)
-                    .filter(|&(token, expect)| token == expect)
-                    .count();
-                assert_eq!(tokens.len(), matching);
-            }
-            Err(err) => {
-                eprintln!("Error: {}", err);
-                panic!("Should not have error")
-            }
-        }
-    }
 }

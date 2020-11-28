@@ -62,10 +62,8 @@ pub fn scan_token(raw: String) -> Result<Vec<Token>, ScannerError> {
                     });
                 } else {
                     // start back tracking
-                    if move_backward(&mut input, &mut matching) {
-                        return Err(ScannerError {
-                            reason: format!("unable to match \"{}\"", matching),
-                        });
+                    if !move_backward(&mut input, &mut matching) {
+                        panic!("matching string should not be empty");
                     }
                     back_track = true;
                     continue;

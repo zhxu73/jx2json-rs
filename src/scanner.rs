@@ -142,7 +142,7 @@ fn token_match(input: &str) -> MatchResult {
         ':' => match_1_char_token(input, Token::COLON),
         ',' => match_1_char_token(input, Token::COMMA),
         '+' => match_1_char_token(input, Token::ADD),
-        '-' => match_1_char_token(input, Token::MINUS),
+        '-' => match_negative_or_minus(input),
         '*' => match_1_char_token(input, Token::MUL),
         '/' => match_1_char_token(input, Token::DIV),
         '%' => match_1_char_token(input, Token::MOD),
@@ -213,6 +213,26 @@ fn match_numeric(input: &str) -> MatchResult {
     }
 
     MatchResult::No
+}
+
+// assume input[0] == '-'
+fn match_negative_or_minus(input: &str) -> MatchResult {
+    if input.len() == 1 {
+        return MatchResult::Matched(Token::MINUS);
+    }
+    let opt = match match_numeric(&input[1..]) {
+        MatchResult::More(opt) => opt,
+        _ => return MatchResult::No,
+    };
+    let token = match opt {
+        Some(token) => token,
+        None => return MatchResult::No,
+    };
+    match token {
+        Token::INTCONST(val) => MatchResult::More(Some(Token::INTCONST(-val))),
+        Token::DOUBLECONST(val) => MatchResult::More(Some(Token::DOUBLECONST(-val))),
+        _ => MatchResult::No,
+    }
 }
 
 // match token that only consist of 1 character

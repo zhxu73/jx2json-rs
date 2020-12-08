@@ -1,32 +1,47 @@
 use super::jx_token::Token;
+use std::error::Error;
 use std::fmt;
 use std::fs;
+use std::io;
 
-pub struct ScannerError {
-    reason: String,
+#[derive(Debug)]
+pub enum ScannerErr {
+    // IO error when read input
+    IO(io::Error),
+    // Errors while scanning
+    Scan(String),
 }
 
-impl fmt::Display for ScannerError {
+impl Error for ScannerErr {}
+
+impl fmt::Display for ScannerErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.reason)
+        match &self {
+            ScannerErr::IO(err) => write!(f, "{}", err),
+            ScannerErr::Scan(reason) => write!(f, "{}", reason),
+        }
     }
 }
 
-pub fn scan_file(filename: &String) -> Result<Vec<Token>, ScannerError> {
-    let contents = fs::read_to_string(filename).expect("Error when reading the file");
+pub fn scan_file(filename: &String) -> Result<Vec<Token>, ScannerErr> {
+    let contents = match fs::read_to_string(filename) {
+        Ok(contents) => contents,
+        Err(e) => return Err(ScannerErr::IO(e)),
+    };
     scan_token(contents)
 }
 
-pub fn scan_token(raw: String) -> Result<Vec<Token>, ScannerError> {
+pub fn scan_token(raw: String) -> Result<Vec<Token>, ScannerErr> {
     // reverse the input, so that the input is a stack/Vec whose top is the start of the input
     let mut input: String = raw.chars().rev().collect();
     let mut matching = String::from("");
     let mut tokens: Vec<Token> = vec![];
 
     if !move_forward(&mut input, &mut matching) {
-        return Err(ScannerError {
-            reason: format!("can not read characters from input {}", input),
-        });
+        return Err(ScannerErr::Scan(format!(
+            "can not read characters from input {}",
+            input
+        )));
     }
 
     let mut back_track = false;
@@ -47,9 +62,10 @@ pub fn scan_token(raw: String) -> Result<Vec<Token>, ScannerError> {
                             matching.clear();
                         }
                         None => {
-                            return Err(ScannerError {
-                                reason: format!("unable to match \"{}\"", matching),
-                            })
+                            return Err(ScannerErr::Scan(format!(
+                                "unable to match \"{}\"",
+                                matching
+                            )))
                         }
                     }
                 }
@@ -57,9 +73,10 @@ pub fn scan_token(raw: String) -> Result<Vec<Token>, ScannerError> {
             MatchResult::No => {
                 if back_track {
                     // if already back tracking, then no match
-                    return Err(ScannerError {
-                        reason: format!("unable to match \"{}\"", matching),
-                    });
+                    return Err(ScannerErr::Scan(format!(
+                        "unable to match \"{}\"",
+                        matching
+                    )));
                 } else {
                     // start back tracking
                     if !move_backward(&mut input, &mut matching) {
@@ -304,7 +321,6 @@ fn match_strconst(input: &str, quote: char) -> MatchResult {
 
 #[cfg(test)]
 mod tests {
-    use super::scan_token;
     use super::token_match;
     use super::MatchResult;
     use super::Token;

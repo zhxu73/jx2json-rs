@@ -48,7 +48,7 @@ pub fn scan_token(raw: String) -> Result<Vec<Token>, ScannerErr> {
     loop {
         match token_match(&matching) {
             MatchResult::Matched(token) => {
-                println!("token matched: {}", token.to_str());
+                //println!("token matched: {}", token.to_str());
                 tokens.push(token);
                 matching.clear();
             }
@@ -147,7 +147,7 @@ fn token_match(input: &str) -> MatchResult {
         Some(c) => c,
         None => return MatchResult::No,
     };
-    println!("t_m(), input {}", input);
+    //println!("t_m(), input {}", input);
     match c {
         '{' => match_1_char_token(input, Token::LBRAC),
         '}' => match_1_char_token(input, Token::RBRAC),

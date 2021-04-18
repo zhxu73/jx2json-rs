@@ -82,5 +82,11 @@ fn parse_args() -> CLIArgs {
 }
 
 fn print_help() {
-    println!("jx2json [--help|-h] [jx-filename]");
+    println!("jx2json [OPTIONS] [jx-filename]");
+    println!("options:");
+    println!("\t--help|-h");
+    println!("\t--print-tokens");
+    println!("\t--print-ast");
+    println!("\t--json-gen");
+    println!("\t--debug");
 }

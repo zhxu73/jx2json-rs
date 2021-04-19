@@ -18,10 +18,11 @@ value : STRCONST
 object : LBRAC RBRAC | LBRAC key_val_list RBRAC;
 
 list : LSQBRAC RSQBRAC
-    | LSQBRAC expr_list RSQBRAC
+    | LSQBRAC expr_list RSQBRAC;
 expr_list : expr | expr COMMA expr_list;
 
-jx_expr : jx_arith_expr
+jx_expr : ID
+    | jx_arith_expr
     | list_compre_expr;
 
 jx_arith_expr : arith_const ADD jx_arith_expr;
@@ -29,4 +30,5 @@ arith_const : STRCONST | INTCONST | DOUBLECONST;
 
 list_compre_expr : value FOR ID IN iterable_expr opt_list_compre_expr;
 iterable_expr : list;
-opt_list_compre_expr : FOR ID IN iterable_expr opt_list_compre_expr;
+opt_list_compre_expr : FOR ID IN iterable_expr opt_list_compre_expr |;
+

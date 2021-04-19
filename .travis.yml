@@ -8,6 +8,8 @@ matrix:
   allow_failures:
     - rust: nightly
   fast_finish: true
+before_script:
+  - if [ $TRAVIS_RUST_VERSION == "stable" ]; then rustup component add rustfmt; fi
 script:
   - if [ $TRAVIS_RUST_VERSION == "stable" ]; then cargo fmt --all --verbose -- --check; fi
   - cargo build --verbose --workspace

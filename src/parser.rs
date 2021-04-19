@@ -50,7 +50,25 @@ impl TokenSrc {
     }
 
     fn consume(&mut self) {
+        if self.curr_index + 1 > self.tokens.len() {
+            panic!("consume out of bound")
+        }
+        println!("consume {}", self.tokens[self.curr_index]);
         self.curr_index += 1;
+    }
+
+    fn backtrack_one(&mut self) {
+        if self.curr_index < 1 {
+            panic!("backtrack_one out of bound")
+        }
+        self.curr_index -= 1;
+    }
+
+    fn backtrack_to(&mut self, index: usize) {
+        if self.curr_index < index {
+            panic!("backtrack_to cannot be used to advance")
+        }
+        self.curr_index = index;
     }
 
     fn curr(&self) -> &Token {
@@ -59,6 +77,14 @@ impl TokenSrc {
 
     fn curr_token(&self) -> Token {
         self.tokens.get(self.curr_index).unwrap().clone()
+    }
+
+    fn next_token(&self) -> Token {
+        self.tokens.get(self.curr_index + 1).unwrap().clone()
+    }
+
+    fn curr_index(&self) -> usize {
+        self.curr_index
     }
 }
 
@@ -109,19 +135,26 @@ fn match_key_val(src: &mut TokenSrc) -> Option<(String, Ast)> {
 }
 
 fn match_expr(src: &mut TokenSrc) -> Option<Ast> {
-    // FIXME
-    // value and jx_expr needs to be further disambiguated
     match src.curr() {
-        // value
+        // both jx_expr and value
         Token::STRCONST(_)
         | Token::INTCONST(_)
         | Token::DOUBLECONST(_)
         | Token::BOOLCONST(_)
         | Token::LBRAC
-        | Token::LSQBRAC => return match_value(src),
-        // jx_expr
-        _ => return match_jx_expr(src),
+        | Token::LSQBRAC => (),
+        // jx_expr only
+        Token::ID(_) => return match_jx_expr(src),
+        _ => return None,
     }
+
+    let index = src.curr_index();
+    match match_jx_expr(src) {
+        Some(expr) => return Some(expr),
+        None => src.backtrack_to(index),
+    }
+    println!("backtracked jx_expr");
+    match_value(src)
 }
 
 fn match_value(src: &mut TokenSrc) -> Option<Ast> {
@@ -212,8 +245,8 @@ fn match_expr_list(src: &mut TokenSrc, mut list: Vec<Ast>) -> Option<Vec<Ast>> {
     match src.curr() {
         // more expr
         Token::COMMA => (),
-        // no more expr
-        _ => return None,
+        // no more expr, return the matched one
+        _ => return Some(list),
     };
 
     if !match_terminal(src, Token::COMMA) {
@@ -228,7 +261,136 @@ fn match_expr_list(src: &mut TokenSrc, mut list: Vec<Ast>) -> Option<Vec<Ast>> {
 }
 
 fn match_jx_expr(src: &mut TokenSrc) -> Option<Ast> {
+    println!("\t\t{}", src.next_token());
     println!("jx_expr");
+    match src.curr() {
+        // both jx_arith_expr | list_compre_expr
+        Token::STRCONST(_) | Token::INTCONST(_) | Token::DOUBLECONST(_) => {
+            let index = src.curr_index();
+            match match_jx_arith_expr(src) {
+                Some(ast) => return Some(ast),
+                None => src.backtrack_to(index),
+            }
+            println!("backtrack jx_arith_expr");
+            match_list_compre_expr(src)
+        }
+        // list_compre_expr only
+        Token::BOOLCONST(_) | Token::LBRAC | Token::LSQBRAC => match_list_compre_expr(src),
+        _ => None,
+    }
+}
+
+fn match_jx_arith_expr(src: &mut TokenSrc) -> Option<Ast> {
+    match src.curr() {
+        Token::STRCONST(_) => {
+            let s1 = match match_STRVAL(src) {
+                Some(val) => val,
+                None => return None,
+            };
+            if !match_terminal(src, Token::ADD) {
+                return None;
+            }
+            let s2 = match match_STRVAL(src) {
+                Some(val) => val,
+                None => return None,
+            };
+            Some(Box::new(AstNode::ADD {
+                left: Box::new(AstNode::STRVAL(s1)),
+                right: Box::new(AstNode::STRVAL(s2)),
+            }))
+        }
+        Token::INTCONST(_) => {
+            let i1 = match match_int(src) {
+                Some(val) => val,
+                None => return None,
+            };
+            if !match_terminal(src, Token::ADD) {
+                return None;
+            }
+            let i2 = match match_int(src) {
+                Some(val) => val,
+                None => return None,
+            };
+            Some(Box::new(AstNode::ADD {
+                left: Box::new(AstNode::INTVAL(i1)),
+                right: Box::new(AstNode::INTVAL(i2)),
+            }))
+        }
+        Token::DOUBLECONST(_) => {
+            let d1 = match match_double(src) {
+                Some(val) => val,
+                None => return None,
+            };
+            if !match_terminal(src, Token::ADD) {
+                return None;
+            }
+            let d2 = match match_double(src) {
+                Some(val) => val,
+                None => return None,
+            };
+            return Some(Box::new(AstNode::ADD {
+                left: Box::new(AstNode::DOUBLEVAL(d1)),
+                right: Box::new(AstNode::DOUBLEVAL(d2)),
+            }));
+        }
+        _ => return None,
+    }
+}
+
+fn match_list_compre_expr(src: &mut TokenSrc) -> Option<Ast> {
+    println!("list_compre_expr");
+    let expr = match match_value(src) {
+        Some(val) => val,
+        None => return None,
+    };
+
+    if !match_terminal(src, Token::FOR) {
+        return None;
+    }
+    let variable = match match_id(src) {
+        Some(val) => val,
+        None => return None,
+    };
+    if !match_terminal(src, Token::IN) {
+        return None;
+    }
+    // iterable_expr
+    let list = match match_list(src) {
+        Some(val) => val,
+        None => return None,
+    };
+    // opt_list_compre_expr
+    // FIXME
+    //match match_opt_list_compre_expr(src) {};
+
+    Some(Box::new(AstNode::COMPRE {
+        expr: expr,
+        var: "".to_string(), // FIXME use variable
+        iter_expr: list,
+    }))
+}
+
+fn match_opt_list_compre_expr(src: &mut TokenSrc) -> Option<Ast> {
+    if !match_terminal(src, Token::FOR) {
+        return None;
+    }
+    let variable = match match_id(src) {
+        Some(val) => val,
+        None => return None,
+    };
+    if !match_terminal(src, Token::IN) {
+        return None;
+    }
+    // iterable_expr
+    let list = match match_list(src) {
+        Some(val) => val,
+        None => return None,
+    };
+    // opt_list_compre_expr
+    // FIXME
+    //match match_opt_list_compre_expr(src) {};
+
+    // FIXME
     None
 }
 
@@ -269,4 +431,37 @@ fn match_STRVAL(src: &mut TokenSrc) -> Option<String> {
         }
         _ => return None,
     };
+}
+
+fn match_int(src: &mut TokenSrc) -> Option<i32> {
+    let val = match src.curr() {
+        Token::INTCONST(val) => {
+            let new_val = val.clone();
+            src.consume();
+            return Some(new_val);
+        }
+        _ => return None,
+    };
+}
+
+fn match_double(src: &mut TokenSrc) -> Option<f64> {
+    let val = match src.curr() {
+        Token::DOUBLECONST(val) => {
+            let new_val = val.clone();
+            src.consume();
+            return Some(new_val);
+        }
+        _ => return None,
+    };
+}
+
+fn match_id(src: &mut TokenSrc) -> Option<Ast> {
+    match src.curr() {
+        Token::ID(name) => {
+            let id = name.clone();
+            src.consume();
+            Some(Box::new(AstNode::VAR(id)))
+        }
+        _ => None,
+    }
 }
